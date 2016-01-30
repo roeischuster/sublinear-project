@@ -103,5 +103,5 @@ remove_low_degree(g, 3)
 print "saving resultant graph to file"
 pickle.dump(g, open("processed_graph.pickle", "wb"))
 print "setting neighbourhood for all nodes"
-neighbourhood_all(g, 5)
+neighbourhood_all(g, 3)
 print "done"

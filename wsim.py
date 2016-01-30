@@ -1,40 +1,70 @@
 import pickle
-DECAY = 0.8
+DECAY = 0.95
+DEPTH = 2
 
-cache = {}
-def return_and_cache(element, val):
-	cache[element] = val
+def init_cache(g):
+	'''
+	Initialize simrank cache for graph g
+	'''
+	g.cache = {}
+
+def return_and_cache(g, element, val):
+	'''
+	Code is pretty self explainatory here
+	'''
+	g.cache[element] = val
 	return val
 
-def recursive_stupid_wsimrank(g, node1, node2, t):
+def simrank_impl(g, node1, node2, t, is_weighted):
+	'''
+	Weighted simrank implementation
+	'''
 	#print "%d %d %d"%(node1, node2, t)
 	if node1 == node2:
 		return 1
 	if t == 0:
 		return 0
-	if (node1, node2, t) in cache.keys():
-		return cache[(node1, node2, t)]
-	if (node2 not in pickle.load(open("neighbourhood/%s"%node1, 'rb'))):
-		return return_and_cache((node1, node2, t), 0)
+	if (node1, node2, t) in g.cache.keys():
+		return g.cache[(node1, node2, t)]
+	#if (node2 not in pickle.load(open("neighbourhood/%s"%node1, 'rb'))):
+	if (node2 not in g.authors[node1].neighbours):
+		return return_and_cache(g, (node1, node2, t), 0)
 	
 	neighbours1 = g.authors[node1].edges
 	neighbours2 = g.authors[node2].edges
 
-	neighbours_mult = [neighbours1[i]*neighbours2[j] for i in neighbours1.keys() for j in neighbours2.keys()]
-
-	simrank_sum = sum([mult*recursive_stupid_wsimrank(g, i, j, t-1) for mult in neighbours_mult])
-	normalize = sum(neighbours_mult)
-
-	return return_and_cache((node1, node2, t), (DECAY/normalize)*simrank_sum)
-
-
-def weighted_simrank(g, subgraph_nodes):
-	#simranks = {(node, node):1 for node in g.authors.keys()} #simrank shall contain the weighted simrank, only where it's not 0, so access should always be via simranks.get((x,y),0)
-	print recursive_stupid_wsimrank(g, list(subgraph_nodes)[1], list(subgraph_nodes)[2], 3)
-
+	if is_weighted:
+		neighbours_mult = [(neighbours1[i]*neighbours2[j], i, j) for i in neighbours1.keys() for j in neighbours2.keys()]
+	else:
+		neighbours_mult = [(1, i, j) for i in neighbours1.keys() for j in neighbours2.keys()]
 	
 
+	simrank_sum = sum([mult*simrank_impl(g, i, j, t-1, is_weighted) for (mult, i, j) in neighbours_mult])
+	normalize = sum([mult for (mult, i, j) in neighbours_mult])
+
+	return return_and_cache(g, (node1, node2, t), (DECAY/normalize)*simrank_sum)
+
+def simrank(g, node1, node2, depth=DEPTH):
+	'''
+	NON-weighted variant
+	'''
+	init_cache(g)
+	return simrank_impl(g, node1, node2, depth, False)
+
+def wsimrank(g, node1, node2, depth=DEPTH):
+	'''
+	weighted variant
+	'''
+	init_cache(g)
+	return simrank_impl(g, node1, node2, depth, True)
+
+
+
 def read_neighbours(g):
+	'''
+	Read neighbours of all nodes from disk into memory.
+	Neighbours are assumed to be stored under the "neighbours" directory.
+	'''
 	i = 0
 	for auth_id, auth in g.authors.iteritems():
 		auth.neighbours = pickle.load(open("neighbourhood/%s"%auth_id, 'rb'))
