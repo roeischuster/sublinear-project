@@ -94,6 +94,8 @@ def neighbourhood_all(g, depth):
 
 print "loading graph"
 g = loader.load_graph()
+g.authors[73317].edges[1200930] = 4
+g.authors[1200930].edges[73317] = 4
 print "noga alon projection"
 noga_alon_projection(g, 3)
 print "bounding degree to %d"%50
